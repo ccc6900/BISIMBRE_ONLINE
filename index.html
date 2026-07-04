@@ -1,0 +1,442 @@
+<script>
+    // CONFIGURACIÓN FIJA
+    const ABLY_KEY = "TPrqNg.rvP-xA:BVcZqQhOyOuU3uv3hrN1mpGOM6PPlLurFPpo5uR0BZk";
+    const SALA_FIJA = "PISTA MUSICAL ONLINE";
+    let selectedTime = 20;
+    let cancionActual = null;
+    let cancionConVoz = null;
+    let cancionActualIndex = null;
+    let ably, net, rol = '', miNombre = '';
+    let salaId = '', tabla = {}, primero = null;
+    let fallidos = [], audioElement = null, countdownInterval = null;
+    let audioLocked = false;
+    let cancionesUsadas = JSON.parse(localStorage.getItem('cancionesUsadas_' + SALA_FIJA) || '[]');
+
+    // 🎵 NUEVOS ENLACES DE GITHUB (sin voz)
+    const CANCEIONES_SIN_VOZ = [
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/ni.tu.ni.nadie_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/no.Hay.Tregua_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/It.s.My.Life_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/la.Mujer.del.Pelotero_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/el.Vals.del.Obrero_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/enamorado.De.La.Moda.Juvenil_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/el.Fin.del.Mundo_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Despacito_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/las.Chicas.Son.Guerreras_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/feo_fuerte_y_formal_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/fisica.o.quimica_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/mediterraneo_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/marihuana_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/marta.Sebas.Guille.y.los.demas_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Clavado.en.Un.Bar_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Maneras.de.Vivir_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Lady.Madrid_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/dolores.Se.Llamaba.Lola_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/I.Want.To.Break.Free_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/livin.on.a.Prayer_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/la.Morocha_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/despecha_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/bailando.por.Ahi_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/bella.ciao_MIX._sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/waterloo_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/ultimo.Baile_MIX_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/tu.calorro_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/te.Quiero_MIX_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Superestrella_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Summer.Of.69_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/soldadito.marinero_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/sera.Perche.Ti.Amo_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Runaway_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Rock.and.Roll.Star_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/rey.del.glam.backtrack_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Rayando.el.Sol_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/por.la.Raja.de.Tu.Falda.Estopa_MIX_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/pacto.Entre.Caballeros_MIX_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/mi.Nombre_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Chanel_cocaina_y_Don_Perigno_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Cadillac.solitario.Live._sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/a.quien.le.importa_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/acabo.de.llegar_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Baby.I.Don.t.Care_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/baby_sin.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Como.Un.Burro.Amarrado_sin.voz.mp3"
+    ];
+
+    // 🎵 NUEVOS ENLACES DE GITHUB (con voz)
+    const CANCIONES_CON_VOZ = [
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/ni.tu.ni.nadie_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/no.Hay.Tregua_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/It.s.My.Life_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/la.Mujer.del.Pelotero_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/el.Vals.del.Obrero_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/enamorado.De.La.Moda.Juvenil_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/el.Fin.del.Mundo_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Despacito_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/las.Chicas.Son.Guerreras_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/feo_fuerte_y_formal_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/fisica.o.quimica_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/mediterraneo_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/marihuana_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/marta.Sebas.Guille.y.los.demas_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Clavado.en.Un.bar_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Maneras.de.Vivir_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Lady.Madrid_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/dolores.Se.Llamaba.Lola__con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/I.Want.To.Break_Free_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/livin.on.a.Prayer_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/la.Morocha_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/despecha_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/bailando.por.Ahi_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/bella.ciao_MIX_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/waterloo_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/ultimo.Baile_MIX_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/tu.calorro_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/te.Quiero_MIX_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Superestrella._con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Summer.Of.69_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/soldadito.marinero_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/sera.Perche.Ti.Amo_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Runaway_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Rock.and.Roll.Star_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/rey.del.glam.backtrack_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Rayando.el.Sol_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/por.la.Raja.de.Tu.Falda.Estopa_MIX_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Pacto.Entre.Caballeros_MIX_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/mi.Nombre_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Chanel_cocaina_y_Don_Perigno_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Cadillac.solitario.Live._con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/a.quien.le.importa_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/acabo.de.llegar_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Baby.I.Don.t.Care_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Baby_con.voz.mp3",
+        "https://github.com/ccc6900/BISIMBRE_ONLINE/releases/download/v1.0/Como.Un.Burro.Amarrado_con.voz.mp3"
+    ];
+
+    // Títulos de las canciones (en el mismo orden que los arrays anteriores)
+    const TITULOS_CANCIONES = [
+        "ni tú ni nadie",
+        "no Hay Tregua",
+        "It's My Life",
+        "la Mujer del Pelotero",
+        "el Vals del Obrero",
+        "enamorado De La Moda Juvenil",
+        "el Fin del Mundo",
+        "Despacito",
+        "las Chicas Son Guerreras",
+        "feo fuerte y formal",
+        "fisica o química",
+        "mediterraneo",
+        "marihuana",
+        "marta Sebas Guille y los demás",
+        "Clavado en Un Bar",
+        "Maneras de Vivir",
+        "Lady Madrid",
+        "dolores Se Llamaba Lola",
+        "I Want To Break Free",
+        "livin on a Prayer",
+        "la Morocha",
+        "despecha",
+        "bailando por Ahi",
+        "bella ciao MIX",
+        "waterloo",
+        "ultimo Baile MIX",
+        "tu calorro",
+        "te Quiero MIX",
+        "Superestrella",
+        "Summer Of '69",
+        "soldadito marinero",
+        "será Perché Ti Amo",
+        "Runaway",
+        "Rock and Roll Star",
+        "rey del glam backtrack",
+        "Rayando el Sol",
+        "por la Raja de Tu Falda Estopa MIX",
+        "pacto Entre Caballeros MIX",
+        "mi Nombre",
+        "Chanel cocaina y Don Perigno",
+        "Cadillac solitario (Live)",
+        "a quien le importa",
+        "acabo de llegar",
+        "Baby I Don't Care",
+        "baby",
+        "Como Un Burro Amarrado"
+    ];
+
+    // --- RESTO DEL CÓDIGO (IGUAL QUE EL ORIGINAL) ---
+    function conectar(tipo) {
+        rol = tipo;
+        salaId = SALA_FIJA;
+        document.getElementById('room-title').innerText = salaId;
+
+        if (typeof Ably === 'undefined') {
+            return alert("Error: Ably no se ha cargado correctamente.");
+        }
+
+        ably = new Ably.Realtime(ABLY_KEY);
+        net = ably.channels.get('room-' + salaId);
+        net.subscribe('ev', function(m) { leer(m.data); });
+
+        document.getElementById('p-login').classList.add('hidden');
+        if(rol === 'admin') {
+            document.getElementById('p-admin').classList.remove('hidden');
+            document.getElementById('p-scores').classList.remove('hidden');
+        } else {
+            document.getElementById('p-player').classList.remove('hidden');
+        }
+    }
+
+    function leer(data) {
+        if (!data || !data.t) return;
+
+        if(data.t === 'go') {
+            primero = null; fallidos = [];
+            audioLocked = true;
+            document.getElementById('log-buzz').innerText = "";
+            const time = data.time || 20;
+            startCountdown(time);
+            if(rol === 'player' && miNombre) {
+                lock(true, "Música sonando... (" + time + "s)");
+            }
+        }
+
+        if(data.t === 'open') {
+            audioLocked = false;
+            if(rol === 'admin') {
+                document.getElementById('status').innerText = "¡Pulsadores abiertos!";
+                document.getElementById('timer-admin').innerText = "";
+            }
+        }
+
+        if(data.t === 'hit') {
+            if(!primero) {
+                primero = data.n;
+                document.getElementById('log-buzz').innerText = "📢 " + primero + " está respondiendo...";
+                if(rol === 'admin') {
+                    document.getElementById('status').innerText = "Responde: " + primero;
+                }
+            }
+            if(rol === 'player') {
+                lock(true, primero + " respondiendo...");
+            }
+        }
+
+        if(data.t === 'fail') {
+            fallidos.push(data.n); primero = null;
+            document.getElementById('log-buzz').innerText = "❌ " + data.n + " falló. ¡Sigue la ronda!";
+            if(rol === 'admin') {
+                document.getElementById('status').innerText = "Falló: " + data.n + ". Esperando rebote...";
+            }
+            if(rol === 'player' && miNombre) {
+                if(!fallidos.includes(miNombre)) {
+                    lock(false, "💥 ¡REBOTE! ¡PULSA! 💥");
+                } else {
+                    lock(true, "Eliminado en esta canción");
+                }
+            }
+        }
+
+        if(data.t === 'up') {
+            tabla = data.s || {};
+            verPuntos();
+        }
+
+        if(data.t === 'end') {
+            primero = null; fallidos = []; audioLocked = false;
+            clearCountdown();
+            document.getElementById('log-buzz').innerText = "";
+            if(rol === 'player') {
+                lock(true, "Preparando siguiente tema...");
+            }
+            if(rol === 'admin') {
+                document.getElementById('status').innerText = "Ronda terminada. Esperando nueva canción...";
+                document.getElementById('timer-admin').innerText = "";
+            }
+        }
+    }
+
+    function entrar() {
+        const n = document.getElementById('nick').value.trim();
+        if(!n) return;
+        miNombre = n;
+        document.getElementById('p-join').classList.add('hidden');
+        document.getElementById('p-game').classList.remove('hidden');
+        document.getElementById('p-scores').classList.remove('hidden');
+        document.getElementById('user-title').innerText = miNombre;
+        if(!tabla[miNombre]) {
+            tabla[miNombre] = 0;
+            net.publish('ev', {t:'up', s:tabla});
+        }
+    }
+
+    function lock(si, txt) {
+        const btn = document.getElementById('pad');
+        const txtEl = document.getElementById('pad-txt');
+        btn.disabled = si; btn.innerText = txt; txtEl.innerText = txt;
+    }
+
+    function pulsar() {
+        if(audioLocked) return;
+        net.publish('ev', {t:'hit', n:miNombre});
+    }
+
+    function elegirCancionAleatoria() {
+        const indicesDisponibles = CANCEIONES_SIN_VOZ
+            .map((_, i) => i)
+            .filter(i => !cancionesUsadas.includes(CANCEIONES_SIN_VOZ[i]));
+
+        if (indicesDisponibles.length === 0) {
+            cancionesUsadas = [];
+            localStorage.setItem('cancionesUsadas_' + SALA_FIJA, JSON.stringify(cancionesUsadas));
+            alert("¡Todas las canciones han sido usadas! Reiniciando lista...");
+            return elegirCancionAleatoria();
+        }
+
+        const randomIndex = indicesDisponibles[Math.floor(Math.random() * indicesDisponibles.length)];
+        cancionActualIndex = randomIndex;
+        cancionActual = CANCEIONES_SIN_VOZ[randomIndex];
+        cancionConVoz = CANCIONES_CON_VOZ[randomIndex];
+        cancionesUsadas.push(cancionActual);
+        localStorage.setItem('cancionesUsadas_' + SALA_FIJA, JSON.stringify(cancionesUsadas));
+        return cancionActual;
+    }
+
+    function mostrarTituloAdmin() {
+        if (rol !== 'admin') return;
+        const el = document.getElementById('titulo-admin');
+        if (!el) return;
+        const titulo = (cancionActualIndex !== null && TITULOS_CANCIONES[cancionActualIndex])
+            ? TITULOS_CANCIONES[cancionActualIndex]
+            : "Título no disponible";
+        el.innerText = "🎵 " + titulo;
+    }
+
+    function reproducirAudio(url, segundos, textoEstado) {
+        document.getElementById('status').innerText = textoEstado;
+
+        if (audioElement) {
+            try { audioElement.pause(); } catch(e) {}
+            audioElement = null;
+        }
+
+        audioElement = new Audio(url);
+        audioElement.play().catch(function(err) {
+            alert("Error al reproducir la canción: " + err.message);
+            net.publish('ev', {t:'end'});
+            document.getElementById('status').innerText = "Error: Canción no válida";
+        });
+
+        setTimeout(function() {
+            if (audioElement) {
+                try { audioElement.pause(); } catch(e) {}
+            }
+            net.publish('ev', {t:'open'});
+            document.getElementById('status').innerText = "¡Pulsadores abiertos!";
+        }, segundos * 1000);
+    }
+
+    function sonarConTiempo(tiempo) {
+        if (!cancionActual) {
+            elegirCancionAleatoria();
+        }
+
+        selectedTime = tiempo;
+        net.publish('ev', {t:'go', time: selectedTime});
+        mostrarTituloAdmin();
+        reproducirAudio(cancionActual, selectedTime, "Sonando... Bloqueado (" + selectedTime + "s)");
+    }
+
+    function sonarConVoz() {
+        if (!cancionConVoz) {
+            alert("Primero debes reproducir una canción sin voz");
+            return;
+        }
+
+        selectedTime = 20;
+        net.publish('ev', {t:'go', time: selectedTime});
+        reproducirAudio(cancionConVoz, selectedTime, "Sonando CON VOZ... (" + selectedTime + "s)");
+    }
+
+    function fallo() {
+        if(!primero) return alert("Nadie ha pulsado");
+        net.publish('ev', {t:'fail', n:primero});
+    }
+
+    function nadieAcertado() {
+        clearCountdown();
+        if (audioElement) {
+            try { audioElement.pause(); } catch(e) {}
+            audioElement = null;
+        }
+        primero = null;
+        fallidos = [];
+        audioLocked = false;
+        net.publish('ev', {t:'end'});
+        document.getElementById('status').innerText = "Nadie acertó. Siguiente canción...";
+        const tituloEl = document.getElementById('titulo-admin');
+        if (tituloEl) tituloEl.innerText = "";
+
+        cancionActual = null;
+        cancionConVoz = null;
+        cancionActualIndex = null;
+    }
+
+    function verPuntos() {
+        const c = document.getElementById('list-scores');
+        c.innerHTML = "";
+        const lista = Object.entries(tabla).sort(function(a,b){return b[1]-a[1];});
+        for(let i = 0; i < lista.length; i++) {
+            let item = lista[i];
+            c.innerHTML += '<div class="row"><span>👤 ' + item[0] + '</span><strong>' + item[1] + ' Pts</strong></div>';
+        }
+    }
+
+    function startCountdown(seconds) {
+        clearCountdown();
+        let timeLeft = seconds;
+        document.getElementById('timer').innerText = timeLeft;
+        if(rol === 'admin') {
+            document.getElementById('timer-admin').innerText = timeLeft + "s";
+        }
+
+        countdownInterval = setInterval(function() {
+            timeLeft--;
+            document.getElementById('timer').innerText = timeLeft;
+            if(rol === 'admin') {
+                document.getElementById('timer-admin').innerText = timeLeft + "s";
+            }
+
+            if(timeLeft <= 0) {
+                clearCountdown();
+                if(rol === 'admin') {
+                    net.publish('ev', {t:'open'});
+                    document.getElementById('status').innerText = "¡Pulsadores abiertos!";
+                    document.getElementById('timer-admin').innerText = "";
+                }
+                if(rol === 'player' && miNombre) {
+                    lock(false, "💥 ¡PULSA! 💥");
+                }
+            }
+        }, 1000);
+    }
+
+    function clearCountdown() {
+        if(countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+        }
+        if(rol === 'player') {
+            document.getElementById('timer').innerText = "";
+        }
+        if(rol === 'admin') {
+            document.getElementById('timer-admin').innerText = "";
+        }
+    }
+
+    (function autoEntrada() {
+        const params = new URLSearchParams(window.location.search);
+        const rolUrl = params.get('rol');
+        if(rolUrl === 'admin' || rolUrl === 'player') {
+            conectar(rolUrl);
+        }
+    })();
+</script>
