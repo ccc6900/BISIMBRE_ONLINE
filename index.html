@@ -476,28 +476,29 @@
         }
 
         function reproducirAudio(url, textoEstado, esConVoz = false) {
-            document.getElementById('status').innerText = textoEstado;
+    document.getElementById('status').innerText = textoEstado;
 
-            if (audioElement) {
-                try { audioElement.pause(); } catch(e) {}
-                audioElement = null;
-            }
+    if (audioElement) {
+        try { audioElement.pause(); } catch(e) {}
+        audioElement = null;
+    }
 
-            audioElement = new Audio(url);
-            audioElement.volume = VOLUMEN_FIJO;
-            audioElement.play().catch(function(err) {
-                alert("Error al reproducir: " + err.message);
-                net.publish('ev', { t: 'end' });
-                document.getElementById('status').innerText = "Error: Canción no válida";
-            });
+    audioElement = new Audio(url);
+    audioElement.volume = VOLUMEN_FIJO;
+    audioElement.play().catch(function(err) {
+        alert("Error al reproducir: " + err.message);
+        net.publish('ev', { t: 'end' });
+        document.getElementById('status').innerText = "Error: Canción no válida";
+    });
 
-            if (esConVoz) {
-                audioElement.addEventListener('ended', function() {
-                    net.publish('ev', { t: 'open' });
-                    document.getElementById('status').innerText = "¡Pulsadores abiertos!";
-                });
-            }
-        }
+    // SOLO añade listener 'ended' si esConVoz = true Y no hay temporizador activo
+    if (esConVoz && !countdownInterval) {
+        audioElement.addEventListener('ended', function() {
+            net.publish('ev', { t: 'open' });
+            document.getElementById('status').innerText = "¡Pulsadores abiertos!";
+        });
+    }
+}
 
         function sonarConTiempo() {
             if (!cancionActual) {
@@ -515,10 +516,10 @@ function sonarConVoz() {
         elegirCancionAleatoria();
         mostrarTituloAdmin();
     }
-    // Publica evento 'go' con tiempo = 60 segundos (activa el temporizador en todos los clientes)
+    // Publica tiempo = 60 (activa temporizador en todos los clientes)
     net.publish('ev', { t: 'go', time: 60 });
     mostrarTituloAdmin();
-    // Reproduce la canción CON VOZ (sin listener 'ended', el temporizador la detendrá)
+    // Reproduce CON VOZ, pero SIN listener 'ended' (el temporizador lo controla)
     reproducirAudio(cancionConVoz, "Sonando CON VOZ... (60s)", false);
 }
 
