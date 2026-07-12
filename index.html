@@ -510,35 +510,16 @@
             reproducirAudio(cancionActual, "Sonando... Bloqueado (" + selectedTime + "s)", false);
         }
 
-        function sonarConVoz() {
+function sonarConVoz() {
     if (!cancionConVoz) {
         elegirCancionAleatoria();
         mostrarTituloAdmin();
     }
-
-    // Publicar evento 'go' con tiempo = 60 segundos
+    // Publica evento 'go' con tiempo = 60 segundos (activa el temporizador en todos los clientes)
     net.publish('ev', { t: 'go', time: 60 });
     mostrarTituloAdmin();
-
-    // Reproducir la canción con voz
+    // Reproduce la canción CON VOZ (sin listener 'ended', el temporizador la detendrá)
     reproducirAudio(cancionConVoz, "Sonando CON VOZ... (60s)", false);
-
-    // Iniciar temporizador de 60 segundos
-    setTimeout(() => {
-        if (audioElement) {
-            try {
-                audioElement.pause();
-                audioElement.currentTime = 0;
-            } catch(e) {}
-            audioElement = null;
-        }
-        clearCountdown();
-        net.publish('ev', { t: 'open' }); // Abrir pulsadores
-        document.getElementById('status').innerText = "¡Tiempo terminado! Pulsadores abiertos.";
-        if (rol === 'player' && miNombre) {
-            lock(false, "💥 ¡PULSA! 💥");
-        }
-    }, 60000); // 60 segundos = 60,000 ms
 }
 
         function pararAudio() {
