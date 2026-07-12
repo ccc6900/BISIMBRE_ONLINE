@@ -146,7 +146,7 @@
         <div class="box">
             <button class="btn btn-stop" onclick="pararAudio()">⏹️ Parar reproducción</button>
             <button class="btn btn-warn" onclick="fallo()">❌ Fallo: Bloquear</button>
-            <button class="btn btn-stop" onclick="nadieAcertado()">⏹️ Nadie acertó</button>
+            <button class="btn btn-go" onclick="pararYAbrirPulsadores()">⏸️ Parar y abrir pulsadores</button>
             <button class="btn btn-warn" onclick="siguienteCancion()">🔀 Siguiente canción</button>
             <button class="btn btn-reset" onclick="resetearTodo()">🔄 RESET TOTAL</button>
         </div>
@@ -530,6 +530,26 @@
             net.publish('ev', { t: 'end' });
             document.getElementById('status').innerText = "Reproducción detenida manualmente.";
             if (rol === 'player' && miNombre) {
+                lock(true, "Espera a que empiece...");
+            }
+        }
+
+        // NUEVA FUNCIÓN: Para y abre los pulsadores
+        function pararYAbrirPulsadores() {
+            if (audioElement) {
+                try {
+                    audioElement.pause();
+                    audioElement.currentTime = 0;
+                } catch(e) {}
+                audioElement = null;
+            }
+            clearCountdown();
+            audioLocked = false;
+            primero = null;
+            fallidos = [];
+            net.publish('ev', { t: 'open' });
+            document.getElementById('status').innerText = "Canción detenida. ¡Pulsadores abiertos!";
+            if (rol === 'player' && miNombre) {
                 lock(false, "💥 ¡PULSA! 💥");
             }
         }
@@ -559,20 +579,6 @@
         function fallo() {
             if (!primero) return alert("Nadie ha pulsado");
             net.publish('ev', { t: 'fail', n: primero });
-        }
-
-        function nadieAcertado() {
-            clearCountdown();
-            if (audioElement) {
-                try { audioElement.pause(); } catch(e) {}
-                audioElement = null;
-            }
-            primero = null; fallidos = []; audioLocked = false;
-            net.publish('ev', { t: 'end' });
-            document.getElementById('status').innerText = "Nadie acertó. Siguiente canción...";
-            const tituloEl = document.getElementById('titulo-admin');
-            if (tituloEl) tituloEl.innerText = "";
-            cancionActual = null; cancionConVoz = null; cancionActualIndex = null;
         }
 
         function asignarPuntos() {
